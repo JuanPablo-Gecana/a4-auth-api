@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { supabase } from './supabaseClient.js';
+import { requireAuth } from './middleware/auth.js';
 
 const app = express();
 app.use(express.json()); 
@@ -40,26 +41,23 @@ app.get('/public/info', (req, res) => {
   res.status(200).json({ message: "HELLO WORLD, THIS IS PUBLIC" })
 });
 
-app.get('/protected/profile', async (req, res) => {
-  const authHeader = req.headers.authorization;
+app.get('/protected/profile', requireAuth, (req, res) => {
+  res.status(200).json({id: req.user.id, email: req.user.email, created_at: req.user.created_at});
+});
 
-  if(!authHeader || !authHeader.startsWith("Bearer ")){
-    return res.status(401).json({ error: "Access token required" })
+app.post('/auth/logout', requireAuth, async (req, res) => {
+  const { error } = await supabase.auth.signOut();
+
+  if(error){
+    return res.status(500).json({error: error.message})
   }
 
-  const token = authHeader.split(' ')[1];
+  res.status(204).send()
+});
 
- if(!token){
-    return res.status(401).json({ error: "Access token required" })
- }
-
- const { data, error } = await supabase.auth.getUser(token);
-
- if(error || !data?.user){
-    return res.status(401).json({ error: "Invalid or expired token" })
- }
-
- res.status(200).json({id: data.user.id, email: data.user.email, created_at: data.user.created_at})
+app.get('/protected/dashboard', requireAuth, (req, res) => {
+  res.status(200).json({ message: "Welcome to your dashboard, ${req.user.email}"})
+  // TODO: return 200 with { message: `Welcome to your dashboard, ${req.user.email}` }
 });
 
 const PORT = process.env.PORT || 3000;
