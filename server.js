@@ -2,9 +2,14 @@ import 'dotenv/config';
 import express from 'express';
 import { supabase } from './supabaseClient.js';
 import { requireAuth } from './middleware/auth.js';
+import swaggerUi from 'swagger-ui-express';
+import { readFileSync } from 'node:fs';
 
 const app = express();
 app.use(express.json()); 
+
+const openapi = JSON.parse(readFileSync(new URL('./openapi.json', import.meta.url), 'utf-8'));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi));
 
 app.post('/auth/signup', async (req, res) => {
   const { email, password } = req.body ?? {};
